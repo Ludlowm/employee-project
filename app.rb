@@ -32,31 +32,40 @@ end
 
 get("/employees/:id") do
   @employee = Employee.find(params.fetch("id").to_i())
-  if @employee.project_id
-    @project = Project.find(@employee.project_id)
-  else
-    @project = nil
-  end
-  @projects = Project.all
+  @employee_projects = @employee.projects
+  @unassigned_projects = Project.all.to_a.keep_if{|project| !@employee_projects.include?(project)}
   erb(:employee)
 end
 
 get("/projects/:id") do
   @project = Project.find(params.fetch("id").to_i())
-  @employees = Employee.all
+  @project_employees = @project.employees
+  @unassigned_employees = Employee.all.to_a.keep_if{|employee| !@project_employees.include?(employee)}
   erb(:project)
 end
 
 patch("/employees/:id") do
-  project_id = params.fetch("project_id").to_i()
   @employee = Employee.find(params.fetch("id").to_i())
-  @employee.update({:project_id => project_id})
+  projects_to_add = params.fetch("projects_to_add",[])
+  projects_to_delete = params.fetch("projects_to_delete",[])
+  projects_to_add.each do |id|
+    @employee.projects.push(Project.find(id))
+  end
+  projects_to_delete.each do |id|
+    @employee.projects.destroy(Project.find(id))
+  end
   redirect back
 end
 
 patch("/projects/:id") do
-  employee = Employee.find(params.fetch("employee_id").to_i())
   @project = Project.find(params.fetch("id").to_i())
-  @project.employees.push(employee)
+  employees_to_add = params.fetch("employees_to_add", [])
+  employees_to_delete = params.fetch("employees_to_delete", [])
+  employees_to_add.each do |id|
+    @project.employees.push(Employee.find(id))
+  end
+  employees_to_delete.each do |id|
+    @project.employees.destroy(Employee.find(id))
+  end
   redirect back
 end
